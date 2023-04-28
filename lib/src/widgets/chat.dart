@@ -95,6 +95,7 @@ class Chat extends StatefulWidget {
     this.userAgent,
     this.useTopSafeAreaInset,
     this.videoMessageBuilder,
+    this.reactionBuilder,
   });
 
   /// See [Message.audioMessageBuilder].
@@ -313,6 +314,9 @@ class Chat extends StatefulWidget {
 
   /// See [Message.videoMessageBuilder].
   final Widget Function(types.VideoMessage, {required int messageWidth})? videoMessageBuilder;
+
+  /// See [Message.reactionBuilder].
+  final Widget Function(types.Message)? reactionBuilder;
 
   @override
   State<Chat> createState() => ChatState();
@@ -575,6 +579,7 @@ class ChatState extends State<Chat> {
           usePreviewData: widget.usePreviewData,
           userAgent: widget.userAgent,
           videoMessageBuilder: widget.videoMessageBuilder,
+          reactionBuilder: widget.reactionBuilder,
         );
       }
 
