@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
+import 'package:intl/intl.dart' as intl;
 import 'package:visibility_detector/visibility_detector.dart';
 
 import '../../models/bubble_rtl_alignment.dart';
@@ -53,6 +54,7 @@ class Message extends StatelessWidget {
     this.userAgent,
     this.videoMessageBuilder,
     this.reactionBuilder,
+    this.messageTimeBuilder,
   });
 
   /// Build an audio message inside predefined bubble.
@@ -108,6 +110,8 @@ class Message extends StatelessWidget {
 
   /// See [TextMessage.nameBuilder].
   final Widget Function(String userId)? nameBuilder;
+
+  final Widget Function(DateTime dateTime)? messageTimeBuilder;
 
   /// See [UserAvatar.onAvatarTap].
   final void Function(types.User)? onAvatarTap;
@@ -173,6 +177,7 @@ class Message extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final query = MediaQuery.of(context);
+    final f = intl.DateFormat('HH:mm');
     final user = InheritedUser.of(context).user;
     final currentUserIsAuthor = user.id == message.author.id;
     final enlargeEmojis = emojiEnlargementBehavior != EmojiEnlargementBehavior.never &&
@@ -221,59 +226,76 @@ class Message extends StatelessWidget {
           : EdgeInsets.only(
               bottom: 4,
               left: 20 + (isMobile ? query.padding.left : 0),
-              right: isMobile ? query.padding.right : 0,
+              right: isMobile ? (query.padding.right + 9) : 0,
             ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        textDirection: bubbleRtlAlignment == BubbleRtlAlignment.left ? null : TextDirection.ltr,
+      child: Column(
+        crossAxisAlignment: currentUserIsAuthor ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          if (!currentUserIsAuthor && showUserAvatars) _avatarBuilder(),
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: messageWidth.toDouble(),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                GestureDetector(
-                  onDoubleTap: () => onMessageDoubleTap?.call(context, message),
-                  onLongPress: () => onMessageLongPress?.call(context, message),
-                  onTap: () => onMessageTap?.call(context, message),
-                  child: onMessageVisibilityChanged != null
-                      ? VisibilityDetector(
-                          key: Key(message.id),
-                          onVisibilityChanged: (visibilityInfo) => onMessageVisibilityChanged!(
-                            message,
-                            visibilityInfo.visibleFraction > 0.1,
-                          ),
-                          child: _bubbleBuilder(
-                            context,
-                            borderRadius.resolve(Directionality.of(context)),
-                            currentUserIsAuthor,
-                            enlargeEmojis,
-                          ),
-                        )
-                      : _bubbleBuilder(
-                          context,
-                          borderRadius.resolve(Directionality.of(context)),
-                          currentUserIsAuthor,
-                          enlargeEmojis,
-                        ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            textDirection: bubbleRtlAlignment == BubbleRtlAlignment.left ? null : TextDirection.ltr,
+            children: [
+              if (!currentUserIsAuthor && showUserAvatars) _avatarBuilder(),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: messageWidth.toDouble(),
                 ),
-              ],
-            ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    GestureDetector(
+                      onDoubleTap: () => onMessageDoubleTap?.call(context, message),
+                      onLongPress: () => onMessageLongPress?.call(context, message),
+                      onTap: () => onMessageTap?.call(context, message),
+                      child: onMessageVisibilityChanged != null
+                          ? VisibilityDetector(
+                              key: Key(message.id),
+                              onVisibilityChanged: (visibilityInfo) => onMessageVisibilityChanged!(
+                                message,
+                                visibilityInfo.visibleFraction > 0.1,
+                              ),
+                              child: _bubbleBuilder(
+                                context,
+                                borderRadius.resolve(Directionality.of(context)),
+                                currentUserIsAuthor,
+                                enlargeEmojis,
+                              ),
+                            )
+                          : _bubbleBuilder(
+                              context,
+                              borderRadius.resolve(Directionality.of(context)),
+                              currentUserIsAuthor,
+                              enlargeEmojis,
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+              // if (currentUserIsAuthor)
+              //   Padding(
+              //     padding: InheritedChatTheme.of(context).theme.statusIconPadding,
+              //     child: showStatus
+              //         ? GestureDetector(
+              //             onLongPress: () => onMessageStatusLongPress?.call(context, message),
+              //             onTap: () => onMessageStatusTap?.call(context, message),
+              //             child: customStatusBuilder != null ? customStatusBuilder!(message, context: context) : MessageStatus(status: message.status),
+              //           )
+              //         : null,
+              //   ),
+            ],
           ),
-          if (currentUserIsAuthor)
-            Padding(
-              padding: InheritedChatTheme.of(context).theme.statusIconPadding,
-              child: showStatus
-                  ? GestureDetector(
-                      onLongPress: () => onMessageStatusLongPress?.call(context, message),
-                      onTap: () => onMessageStatusTap?.call(context, message),
-                      child: customStatusBuilder != null ? customStatusBuilder!(message, context: context) : MessageStatus(status: message.status),
-                    )
-                  : null,
+          if (message.status != types.Status.sent || showAvatar)
+            Row(
+              mainAxisAlignment: currentUserIsAuthor ? MainAxisAlignment.end : MainAxisAlignment.start,
+              children: [
+                SizedBox(width: currentUserIsAuthor ? 0 : 32),
+                customStatusBuilder != null ? customStatusBuilder!(message, context: context) : MessageStatus(status: message.status),
+                if (message.status == types.Status.sent) SizedBox(width: currentUserIsAuthor ? 4 : 0),
+                (message.createdAt != null && message.status == types.Status.sent)
+                    ? (messageTimeBuilder?.call(DateTime.fromMillisecondsSinceEpoch(message.createdAt!)) ?? const SizedBox())
+                    : const SizedBox(),
+              ],
             ),
         ],
       ),
@@ -288,7 +310,7 @@ class Message extends StatelessWidget {
             imageHeaders: imageHeaders,
             onAvatarTap: onAvatarTap,
           )
-      : const SizedBox(width: 40);
+      : const SizedBox(width: 32);
 
   Widget _bubbleBuilder(
     BuildContext context,
@@ -307,9 +329,9 @@ class Message extends StatelessWidget {
               : Container(
                   decoration: BoxDecoration(
                     borderRadius: borderRadius,
-                    color: !currentUserIsAuthor || message.type == types.MessageType.image
-                        ? InheritedChatTheme.of(context).theme.secondaryColor
-                        : InheritedChatTheme.of(context).theme.primaryColor,
+                    color: (message.type == types.MessageType.image || message.type == types.MessageType.video)
+                        ? Colors.transparent
+                        : (!currentUserIsAuthor ? InheritedChatTheme.of(context).theme.secondaryColor : InheritedChatTheme.of(context).theme.primaryColor),
                   ),
                   child: ClipRRect(
                     borderRadius: borderRadius,

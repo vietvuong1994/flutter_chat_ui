@@ -96,10 +96,13 @@ class Chat extends StatefulWidget {
     this.useTopSafeAreaInset,
     this.videoMessageBuilder,
     this.reactionBuilder,
+    this.messageTimeBuilder,
   });
 
   /// See [Message.audioMessageBuilder].
   final Widget Function(types.AudioMessage, {required int messageWidth})? audioMessageBuilder;
+
+  final Widget Function(DateTime)? messageTimeBuilder;
 
   /// See [Message.avatarBuilder].
   final Widget Function(String userId)? avatarBuilder;
@@ -541,6 +544,7 @@ class ChatState extends State<Chat> {
             : min(constraints.maxWidth * 0.78, 440).floor();
 
         messageWidget = Message(
+          messageTimeBuilder: widget.messageTimeBuilder,
           audioMessageBuilder: widget.audioMessageBuilder,
           avatarBuilder: widget.avatarBuilder,
           bubbleBuilder: widget.bubbleBuilder,
